@@ -7,3 +7,4 @@
 .prior-grid label{display:flex;flex-direction:column;gap:6px;margin:5px 0}
 .prior-grid input{width:100%;float:none}
 @media(max-width:520px){header{display:grid;grid-template-columns:1fr auto;height:auto;padding:16px 4px;gap:12px}header nav{grid-column:1/-1;grid-row:2;margin:0;justify-content:center;border-top:1px solid #35402f;padding-top:8px}.expected-tokens{margin:0;justify-self:end;gap:8px}.expected-tokens>span{font-size:10px}.expected-tokens strong{font-size:20px;min-width:35px}.panel-head{flex-wrap:wrap}.brand small{letter-spacing:2px}}
+.decision-note{border-left:2px solid #bfa06a;padding:8px 12px;background:#2a3525;font-size:12px;line-height:1.8;color:#c5cdb4;border-radius:0 5px 5px 0}.decision-note strong{color:#edc17b;font-size:11px}

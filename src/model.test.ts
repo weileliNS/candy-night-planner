@@ -1,7 +1,7 @@
 import {describe,it,expect} from 'vitest';
 import {type State,LINES,bit,cells,pop,posterior,probability,lineProbability,UNIFORM,won,unknown,MAPS,transform,parse,SAMPLES,sample,rng} from './model';
-import {Exact,approximate,solve} from './solver';
-function brute(s:State,p:number):number{if(won(s))return 0;const w=posterior(s,p);return Math.min(...cells(unknown(s)).map(i=>{const q=probability(i,p,w);return 1+(q>0?q*brute({c:s.c|bit(i),e:s.e},p):0)+(q<1?(1-q)*brute({c:s.c,e:s.e|bit(i)},p):0)}))}
+import {Exact,approximate,solve,mandatoryMask,relevantMask,informationGain} from './solver';
+function brute(s:State,p:number,prior=UNIFORM):number{if(won(s))return 0;const w=posterior(s,p,prior);return Math.min(...cells(unknown(s)).map(i=>{const q=probability(i,p,w);return 1+(q>0?q*brute({c:s.c|bit(i),e:s.e},p,prior):0)+(q<1?(1-q)*brute({c:s.c,e:s.e|bit(i)},p,prior):0)}))}
 describe('规则与贝叶斯模型',()=>{
  it('恰好10条唯一4格合法线',()=>{expect(new Set(LINES).size).toBe(10);expect(LINES.every(l=>pop(l)===4)).toBe(true);expect(LINES).toContain(15);expect(LINES).toContain(0x1111);expect(LINES).toContain(0x8421);expect(LINES).toContain(0x1248)});
  it('所有16格覆盖数',()=>expect(Array.from({length:16},(_,i)=>LINES.filter(l=>l&bit(i)).length)).toEqual([3,2,2,3,2,3,3,2,2,3,3,2,3,2,2,3]));
@@ -27,4 +27,56 @@ describe('Bellman 与规划',()=>{
  it('非均匀先验不做无效的对称合并',()=>expect(new Exact(.4,[1,...Array(9).fill(0)]).symmetric).toBe(false));
  it('近似估计确定必胜格为1并诚实标识',()=>{const r=approximate(parse(SAMPLES[0]),{p:.4,prior:UNIFORM,mode:'approx',exactMs:0,approxMs:1000,rollouts:20});expect(r.mode).toBe('Approximate');expect(r.value).toBe(1);expect(r.actions[0].se).toBe(0);expect(r.samples).toBe(20)});
  it('启发式不伪造期望成本',()=>{const r=solve({c:0,e:0},{p:.4,prior:UNIFORM,mode:'heuristic',exactMs:1,approxMs:1});expect(r.mode).toBe('Heuristic');expect(r.value).toBeNaN()});
+});
+describe('Shared mandatory cell regression',()=>{
+ const s={c:bit(0)|bit(12),e:bit(3)|bit(10)|bit(13)},p=4/9;
+ it('Screenshot: R2C1 is unavoidable; R3C1 is equally cheap and informative',()=>{
+  const w=posterior(s,p),r=new Exact(p).solve(s,1000);
+  expect(LINES.filter(l=>!(l&s.e))).toEqual([LINES[1],LINES[4]]);
+  expect(mandatoryMask(s)).toBe(bit(4));expect(probability(4,p,w)).toBe(1);
+  expect(r.value).toBeCloseTo(2+3*(1-probability(8,p,w)),12);
+  expect(r.actions.find(a=>a.i===4)!.q).toBeCloseTo(r.actions.find(a=>a.i===8)!.q,12);
+  expect(r.actions[0].i).toBe(8);expect(r.tiedActions).toEqual([8,4]);
+  expect(informationGain(s,p,UNIFORM,4)).toBe(0);expect(informationGain(s,p,UNIFORM,8)).toBeGreaterThan(0);
+  for(const a of r.actions.filter(a=>!(relevantMask(s)&bit(a.i))))expect(a.q).toBeCloseTo(1+r.value,12);
+ });
+ it('On every compatible completed board, moving the mandatory flip earlier costs no extra flips',()=>{
+  const remaining=cells(unknown(s)&relevantMask(s));let checked=0;
+  for(let assignment=0;assignment<(1<<remaining.length);assignment++){
+   const board=remaining.reduce((m,i,j)=>m|((assignment&bit(j))?bit(i):0),s.c);
+   if(!won({c:board,e:0}))continue;checked++;
+   expect(board&bit(4)).toBe(bit(4));
+   const count=(order:number[])=>{let t={...s},flips=0;for(const i of order){if(won(t))break;if(board&bit(i))t.c|=bit(i);else t.e|=bit(i);flips++}expect(won(t)).toBe(true);return flips};
+   expect(count([4,8,5,6,7])).toBe(count([8,4,5,6,7]));
+  }
+  expect(checked).toBeGreaterThan(0);
+ });
+ it('After the third empty, two lines are left and exact search only explores relevant cells',()=>{
+  const r=new Exact(p).solve({c:0,e:s.e},1000);
+  expect(r.value).toBeCloseTo(4.689300411522634,12);expect(r.states).toBeLessThan(1000);
+ });
+ it('The game screenshot leaves exactly three required reveals on row 2',()=>{
+  const game={c:s.c|bit(4),e:s.e|bit(8)},r=new Exact(p).solve(game,1000);
+  expect(r.value).toBe(3);expect(mandatoryMask(game)).toBe(bit(5)|bit(6)|bit(7));
+ });
+ it('Certain candy on the hidden line is not automatically mandatory for every winning line',()=>{
+  const prior=[1,...Array(9).fill(0)],otherLine={c:bit(5)|bit(9)|bit(13),e:0};
+  expect(mandatoryMask(otherLine)).toBe(0);
+  expect(new Exact(.5,prior).solve(otherLine,5000).value).toBe(1);
+ });
+ it('Rollout also prefers information only when sampled costs are exactly tied',()=>{
+  const r=approximate(s,{p,prior:UNIFORM,mode:'approx',exactMs:0,approxMs:1000,rollouts:100});
+  expect(r.actions[0].i).toBe(8);expect(r.actions.find(a=>a.i===4)!.q).toBe(r.actions.find(a=>a.i===8)!.q);
+ });
+ it('Pruning and factoring agree with unpruned brute force across seeded endgames and priors',()=>{
+  for(const prob of [0,.3,.8,1])for(const prior of [UNIFORM,[1,2,3,4,5,6,7,8,9,10]]){
+   const random=rng(1234),w=posterior({c:0,e:0},prob,prior);
+   for(let n=0;n<10;n++){
+    const board=sample({c:0,e:0},prob,w,random),indices=Array.from({length:16},(_,i)=>i);
+    for(let j=15;j>0;j--){const k=Math.floor(random()*(j+1));[indices[j],indices[k]]=[indices[k],indices[j]]}
+    const state=indices.slice(0,11).reduce((t,i)=>board&bit(i)?{...t,c:t.c|bit(i)}:{...t,e:t.e|bit(i)},{c:0,e:0});
+    expect(new Exact(prob,prior).solve(state,5000).value).toBeCloseTo(brute(state,prob,prior),10);
+   }
+  }
+ });
 });
