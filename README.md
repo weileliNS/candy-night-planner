@@ -1,5 +1,7 @@
 # Candy Night · 4×4 Flip Planner
 
+[Open the live app](https://weilelins.github.io/candy-night-planner/) · [GitHub repository](https://github.com/weileliNS/candy-night-planner)
+
 GitHub Pages 版本界面使用英文，包含 Planner 与 Simulation 页面。已按展示需求移除棋盘记录、文本导入/复制及样本按钮区域；模型层的原始样本、文本格式函数与相关测试仍保留用于验证。右上角 **Expected tokens** 显示当前策略的预计剩余代币成本 `5 × V(S)`，不含已经花费的代币；近似模式下为估计值，启发式未估值时显示 `—`，通关后为 `0.0`。
 
 在本地浏览器记录翻牌结果，计算隐藏保底线的贝叶斯后验，并规划通关所需的期望剩余翻牌次数。React + TypeScript + Vite，计算和模拟均运行在 Web Worker，无后端或外部服务依赖。
@@ -34,7 +36,7 @@ npm run validate -- 1000 1000
 
 公开仓库可使用 GitHub Free 的 Pages。免费托管受 GitHub Pages 正常服务限制约束；本项目不产生按请求收费的模型 API 开销。不同访客的棋盘各自保存在其浏览器，互不共享。
 
-打包下载后请确认 `.github/workflows/pages.yml` 已上传；只上传构建前的源 `index.html` 而未运行工作流无法使用本网页。当前交付仅准备好了部署配置，尚未关联或发布到你的 GitHub 仓库。
+打包下载后请确认 `.github/workflows/pages.yml` 已上传；只上传构建前的源 `index.html` 而未运行工作流无法使用本网页。本项目已部署到上方 live app 地址，推送 main 分支会自动重新测试、构建并发布。
 
 ## 使用
 
