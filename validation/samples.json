@@ -1,0 +1,38 @@
+[
+  {
+    "name": "A",
+    "text": "E E C C\nE C C E\nC C C E\nE C U C",
+    "candy": 9,
+    "empty": 6,
+    "possibleLines": [
+      "第3列"
+    ],
+    "completeIfUIsCandy": [
+      "第3列"
+    ]
+  },
+  {
+    "name": "B",
+    "text": "C C E E\nC C C U\nC C E E\nE E C C",
+    "candy": 9,
+    "empty": 6,
+    "possibleLines": [
+      "第2行"
+    ],
+    "completeIfUIsCandy": [
+      "第2行"
+    ]
+  },
+  {
+    "name": "C",
+    "text": "C C C E\nC C E E\nE E U C\nE E C C",
+    "candy": 8,
+    "empty": 7,
+    "possibleLines": [
+      "主对角线"
+    ],
+    "completeIfUIsCandy": [
+      "主对角线"
+    ]
+  }
+]
